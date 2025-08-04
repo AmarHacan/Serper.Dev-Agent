@@ -2,8 +2,14 @@ import requests
 from config import SERPER_API_KEY,SERPER_BASE_URL as SERPER_BASE_URL
 import time
 from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "https://google.serper.dev/places"
+MAX_PAGES = 30
+NUM_PER_PAGE = 20
+MAX_WORKERS = 10
+BATCH_SIZE = 5
+
 
 def query_places(query, location=None, num=10, page=1):
     """
@@ -22,21 +28,37 @@ def query_places(query, location=None, num=10, page=1):
     return resp.json()  # dict with "places", "searchParameters", "credits"
 
 def query_places_all(query, location=None, start_page=1) -> List[Dict[str, Any]]:
-    """
-    Fetch multiple pages and return a flat list of place dicts.
-    Stops when a page returns no places or after max_pages.
-    """
-    num=50
     all_places = []
-    page = start_page
-    condition = True
-    while condition:
-        data = query_places(query, location=location, num=num, page=page)
-        places = data.get("places", []) or []
-        print("Current Page : ",page)
-        if not places:
-            print("Break : ",page)
+    current_page = start_page
+
+    def fetch_page(page):
+        try:
+            data = query_places(query, location=location, page=page)
+            return page, data.get("places", []) or []
+        except Exception as e:
+            print(f"Error on page {page}: {e}")
+            return page, []
+
+    while current_page <= MAX_PAGES:
+        batch_pages = list(range(current_page, min(current_page + BATCH_SIZE, MAX_PAGES + 1)))
+        empty_page_found = False
+        print(f"Fetching batch: {batch_pages}")
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(fetch_page, page): page for page in batch_pages}
+
+            for future in as_completed(futures):
+                page, places = future.result()
+                print(f"Page {page} -> {len(places)} places")
+                if not places:
+                    empty_page_found = True
+                else:
+                    all_places.extend(places)
+
+        if empty_page_found:
+            print("Stopping: empty page encountered.")
             break
-        all_places.extend(places)
-        page += 1
+
+        current_page += BATCH_SIZE
+
     return all_places

@@ -5,7 +5,7 @@ from config import OUTPUT_FILE_CENTRAL_SOURCE,OUTPUT_FILE_States_SOURCE
 FIXED_COLUMNS = [
     "title", "address", "phoneNumber", "website",
     "rating", "ratingCount", "category",
-    "latitude", "longitude", "cid"
+    "latitude", "longitude", "cid","normalized_website"
 ]
 
 def create_append_rows(row: dict, filename: str = "CentralSource.csv"):
@@ -30,11 +30,11 @@ def create_append_rows(row: dict, filename: str = "CentralSource.csv"):
     # If file doesn't exist, create with header
     if not os.path.isfile(full_path):
         pd.DataFrame([normalized], columns=FIXED_COLUMNS).to_csv(full_path, index=False)
-        print(f"🆕 Created file and wrote 1 row to {full_path}")
+        # print(f"🆕 Created file and wrote 1 row to {full_path}")
         return
 
     # Append without header, fixed column order
     pd.DataFrame([normalized], columns=FIXED_COLUMNS).to_csv(
         full_path, mode="a", header=False, index=False
     )
-    print(f"✅ Appended row to {full_path}")
+    # print(f"✅ Appended row to {full_path}")

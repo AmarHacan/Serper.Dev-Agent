@@ -3,10 +3,12 @@ from exporter import create_append_rows
 from config import OUTPUT_FILE_CENTRAL_SOURCE
 from deduplicator import is_duplicate_row
 from read_Locations import group_by_state
+from urllib.parse import urlparse
+
 def run():
     queries = ["roof repair services","Roofing contractor"]
     resp = group_by_state()
-    print("Response Read : ",resp)
+    # print("Response Read : ",resp)
 
     for queryTemp in queries:
         if resp is not None:
@@ -17,58 +19,26 @@ def run():
                     print(query)
                     all_businesses = query_places_all(query)
                     for j, business in enumerate(all_businesses):
-                        print(f"Processing business {i+1}/{len(all_businesses)}: {business.get('title', 'Unknown')}")
+                        # print(f"Processing business {i+1}/{len(all_businesses)}: {business.get('title', 'Unknown')}")
+                        raw_website = business.get("website", "")
+                        if raw_website:
+                            normalized = normalize_website(raw_website)
+                        else:
+                            normalized = ""
+                        business["normalized_website"] = normalized
                         create_append_rows(business, state)
-
-
                     # print(f"  {o}: {city}")  # city is already a string
         else:
             print("Failed to read CSV file")       
-    # location = ""
-    # filename = location.split(",")[0].strip().replace(" ", "_")
+
+def normalize_website(raw_url):
+    if not raw_url:
+        return ""
+    raw_url = raw_url.lower().replace("https://", "").replace("http://", "").replace("www.", "").strip()
+    parsed = urlparse("http://" + raw_url)  # ensure it parses correctly
+    domain = parsed.netloc or parsed.path.split('/')[0]
+    return domain.rstrip("/")
 
     
-    # query = "roofing services"
-    # all_businesses = query_places_all(query, location)
-    # for i, business in enumerate(all_businesses):
-    #     print(f"Processing business {i+1}/{len(all_businesses)}: {business.get('title', 'Unknown')}")
-        
-    #     create_append_rows(business, filename)
-
-    # print(" ⚠️Location",filename)
-    # print("Businesses found. ",all_businesses)
-    
-    # create_append_rows(all_businesses,"Testing")
-    # for i, business in enumerate(all_businesses):
-    #         print(f"Processing business {i+1}/{len(all_businesses)}: {business.get('title', 'Unknown')}")
-            
 if __name__ == "__main__":
     run()
-
-
-
-
-    # row = {
-    # "title": "Test Roofing",
-    # "address": "123 Main St",
-    # "phone": "(123) 456-7890",
-    # "website": "https://testroofing.com",
-    # "rating": 5.0,
-    # "rating_count": 10,
-    # "category": "Roofing contractor",
-    # "latitude": 29.123,
-    # "longitude": -95.456,
-    # "cid": "1234567890"
-    # }
-    # append_row_to_csv(row)
-    # if not is_duplicate_row(row):
-    # else:
-    #     print("Error Duplication")
-
-
-
-    # location = response.get("searchParameters", {})
-    # businesses = response.get("places", [])
-    # fileName =location["location"].split(",")[0]
-    # print(businesses)
-    # create_append_rows(businesses,fileName)
